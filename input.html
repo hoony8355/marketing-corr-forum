@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>마케팅 데이터 입력</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    input { border: 1px solid #ccc; padding: 0.4rem; border-radius: 6px; width: 100%; }
+    th, td { padding: 0.5rem; text-align: center; }
+  </style>
+</head>
+<body class="bg-gray-50 p-6">
+  <div class="max-w-7xl mx-auto bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold mb-4">📥 주간 마케팅 데이터 입력</h1>
+    <p class="text-gray-600 mb-6">최소 4주 이상의 데이터를 입력해주세요. 최대 12주까지 가능합니다.</p>
+
+    <form id="weeklyForm">
+      <div class="overflow-x-auto">
+        <table class="table-auto w-full text-sm border-collapse border">
+          <thead class="bg-gray-100">
+            <tr>
+              <th>주차</th>
+              <th>결제금액</th>
+              <th>환불비율 (%)</th>
+              <th>방문자수</th>
+              <th>전체주문고객수</th>
+              <th>기존고객수</th>
+              <th>신규고객수</th>
+              <th>전체주문건수</th>
+              <th>관심고객증감</th>
+              <th>알림고객증감</th>
+              <th>광고유입자수</th>
+              <th>광고비용</th>
+              <th>광고전환수</th>
+              <th>광고클릭수</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- 최소 4주차 필드 삽입 -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-between items-center mt-6">
+        <button type="button" onclick="addRow()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          + 주차 추가
+        </button>
+        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+          분석 요청하기
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const tableBody = document.getElementById('tableBody');
+    let rowCount = 0;
+    const maxRows = 12;
+
+    const addRow = () => {
+      if (rowCount >= maxRows) {
+        alert("최대 12주까지만 입력 가능합니다.");
+        return;
+      }
+
+      rowCount++;
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>제 ${rowCount}주</td>
+        ${Array(13).fill(`<td><input type="number" step="any" required name="week${rowCount}[]"></td>`).join('')}
+      `;
+      tableBody.appendChild(row);
+    };
+
+    // 기본 4주 자동 생성
+    for (let i = 0; i < 4; i++) addRow();
+
+    // 제출 시 최소 4주 확인
+    document.getElementById('weeklyForm').addEventListener('submit', e => {
+      e.preventDefault();
+      if (rowCount < 4) {
+        alert("최소 4주 이상 입력해주세요.");
+        return;
+      }
+
+      // 이후 Firebase 또는 API로 데이터 전송
+      alert("입력 완료! 분석 요청 처리 예정입니다.");
+    });
+  </script>
+</body>
+</html>
