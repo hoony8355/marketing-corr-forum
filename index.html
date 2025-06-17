@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>마케팅 분석 토론 게시판</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="js/firebase.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+  <header class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold">📊 마케팅 상관관계 분석 게시판</h1>
+    <a href="upload.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+      + CSV 업로드하기
+    </a>
+  </header>
+
+  <main class="max-w-4xl mx-auto mt-6 px-4">
+    <p class="mb-4 text-gray-600">누구나 마케팅 데이터를 업로드하고, 자동 분석 결과를 공유하고 토론할 수 있어요.</p>
+
+    <div id="post-list" class="space-y-4">
+      <!-- 게시글 목록이 여기에 표시됩니다 -->
+    </div>
+  </main>
+
+  <script type="module">
+    import { db } from './js/firebase.js';
+    import { collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const postList = document.getElementById('post-list');
+    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+
+    snapshot.forEach(doc => {
+      const post = doc.data();
+      const div = document.createElement('div');
+      div.className = "bg-white p-4 rounded shadow hover:shadow-md cursor-pointer";
+      div.innerHTML = `
+        <h2 class="text-lg font-semibold">${post.title}</h2>
+        <p class="text-sm text-gray-500">${new Date(post.createdAt.toDate()).toLocaleString()} | 작성자: ${post.nickname}</p>
+        <p class="mt-2 text-gray-700 line-clamp-2">${post.summary || '상관관계 분석 결과를 확인해보세요.'}</p>
+      `;
+      div.onclick = () => window.location.href = `post.html?id=${doc.id}`;
+      postList.appendChild(div);
+    });
+  </script>
+</body>
+</html>
