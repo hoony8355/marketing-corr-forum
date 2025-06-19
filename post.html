@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>분석 상세 보기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="js/firebase.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <header class="bg-white shadow p-4">
+    <h1 class="text-2xl font-bold">📋 마케팅 분석 상세 결과</h1>
+  </header>
+
+  <main class="max-w-4xl mx-auto p-6 bg-white mt-6 rounded shadow">
+    <section id="analysis-section">
+      <h2 id="title" class="text-xl font-semibold mb-2">제목 불러오는 중...</h2>
+      <p class="text-gray-500 mb-4" id="timestamp"></p>
+      <img id="heatmap" alt="상관관계 히트맵" class="mb-6 hidden"/>
+      <div id="summary" class="text-gray-700 text-sm"></div>
+    </section>
+
+    <hr class="my-6">
+
+    <section id="comments-section">
+      <h3 class="text-lg font-bold mb-2">💬 댓글</h3>
+      <div id="comment-list" class="space-y-3 mb-4"></div>
+      <form id="commentForm" class="flex flex-col gap-2">
+        <textarea id="commentText" rows="3" placeholder="의견을 남겨보세요" class="w-full border p-2 rounded"></textarea>
+        <button type="submit" class="self-end bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">댓글 작성</button>
+      </form>
+    </section>
+  </main>
+
+  <script type="module">
+    import { db } from './js/firebase.js';
+    import {
+      doc, getDoc, collection, addDoc, query, orderBy, getDocs, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const params = new URLSearchParams(window.location.search);
+    const postId = params.get("id");
+
+    const titleEl = document.getElementById("title");
+    const timestampEl = document.getElementById("timestamp");
+    const heatmapEl = document.getElementById("heatmap");
+    const summaryEl = document.getElementById("summary");
+
+    const postRef = doc(db, "posts", postId);
+    const postSnap = await getDoc(postRef);
+
+    if (postSnap.exists()) {
+      const data = postSnap.data();
+      titleEl.textContent = data.title;
+      timestampEl.textContent = new Date(data.createdAt.toDate()).toLocaleString();
+      if (data.heatmap) {
+        heatmapEl.src = data.heatmap;
+        heatmapEl.classList.remove("hidden");
+      }
+      if (data.corr) {
+        const corr = data.corr;
+        let maxPair = "", minPair = "";
+        let maxVal = -2, minVal = 2;
+
+        const keys = Object.keys(corr);
+        keys.forEach(k1 => {
+          keys.forEach(k2 => {
+            if (k1 !== k2) {
+              const val = corr[k1][k2];
+              if (val > maxVal) {
+                maxVal = val; maxPair = `${k1} ↔ ${k2}`;
+              }
+              if (val < minVal) {
+                minVal = val; minPair = `${k1} ↔ ${k2}`;
+              }
+            }
+          });
+        });
+
+        summaryEl.innerHTML = `
+          <p>📈 <strong>가장 강한 양의 상관관계:</strong> ${maxPair} (${maxVal})</p>
+          <p>📉 <strong>가장 강한 음의 상관관계:</strong> ${minPair} (${minVal})</p>
+        `;
+      }
+    } else {
+      titleEl.textContent = "분석 결과를 찾을 수 없습니다.";
+    }
+
+    // 댓글 불러오기
+    const commentList = document.getElementById("comment-list");
+    const q = query(collection(db, "posts", postId, "comments"), orderBy("createdAt", "desc"));
+    const commentSnap = await getDocs(q);
+
+    commentSnap.forEach(doc => {
+      const comment = doc.data();
+      const div = document.createElement("div");
+      div.className = "bg-gray-50 p-3 rounded border";
+      div.innerHTML = `
+        <p class="text-sm">${comment.text}</p>
+        <p class="text-xs text-gray-500 mt-1">${new Date(comment.createdAt.toDate()).toLocaleString()}</p>
+      `;
+      commentList.appendChild(div);
+    });
+
+    // 댓글 작성
+    document.getElementById("commentForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const text = document.getElementById("commentText").value.trim();
+      if (!text) return;
+
+      await addDoc(collection(db, "posts", postId, "comments"), {
+        text,
+        createdAt: serverTimestamp()
+      });
+
+      location.reload(); // 댓글 갱신
+    });
+  </script>
+</body>
+</html>
