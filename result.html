@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>상관관계 분석 결과</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6">
+  <div class="max-w-5xl mx-auto bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold mb-4">📈 상관관계 분석 결과</h1>
+    <p class="text-gray-600 mb-6">아래는 최근 입력한 주간 마케팅 데이터의 변수 간 상관관계입니다.</p>
+
+    <div class="mb-8">
+      <h2 class="text-lg font-semibold mb-2">🔍 상관계수 히트맵</h2>
+      <img id="heatmapImage" class="w-full border rounded" alt="상관계수 히트맵" />
+    </div>
+
+    <div class="mb-8 overflow-x-auto">
+      <h2 class="text-lg font-semibold mb-2">📊 상관계수 테이블</h2>
+      <table id="corrTable" class="table-auto border-collapse w-full text-sm border">
+        <!-- JS에서 동적 생성 -->
+      </table>
+    </div>
+
+    <div class="flex justify-end">
+      <button onclick="window.location.href='index.html'"
+        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        게시판으로 돌아가기
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 히트맵 표시
+    const heatmap = localStorage.getItem("heatmap");
+    document.getElementById("heatmapImage").src = heatmap;
+
+    // 상관계수 테이블 표시
+    const corr = JSON.parse(localStorage.getItem("corr"));
+    const keys = Object.keys(corr);
+    const table = document.getElementById("corrTable");
+
+    // Header row
+    let header = "<tr><th class='border bg-gray-100 p-2'></th>";
+    keys.forEach(k => {
+      header += `<th class='border bg-gray-100 p-2'>${k}</th>`;
+    });
+    header += "</tr>";
+    table.innerHTML += header;
+
+    // Data rows
+    keys.forEach(rowKey => {
+      let row = `<tr><th class='border bg-gray-100 p-2'>${rowKey}</th>`;
+      keys.forEach(colKey => {
+        const value = corr[rowKey][colKey];
+        row += `<td class='border p-2 text-center'>${value.toFixed(2)}</td>`;
+      });
+      row += "</tr>";
+      table.innerHTML += row;
+    });
+  </script>
+</body>
+</html>
