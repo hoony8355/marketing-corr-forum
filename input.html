@@ -113,64 +113,64 @@
     for (let i = 0; i < 4; i++) addRow();
 
     document.getElementById('weeklyForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const columnNames = getColumnNames();
-      const colCount = columnNames.length;
-      const rowLen = tableBody.children.length;
-      const cols = Array.from({ length: colCount }, () => []);
+  e.preventDefault();
+  const columnNames = getColumnNames();
+  const colCount = columnNames.length;
+  const rowCount = tableBody.children.length;
+  const cols = Array.from({ length: colCount }, () => []);
 
-      for (let r = 0; r < rowLen; r++) {
-        const inputs = tableBody.children[r].querySelectorAll('input');
-        inputs.forEach((input, i) => {
-          cols[i].push(input.value.trim());
-        });
-      }
-
-      // 열 기준 유효성 검사
-      for (let i = 0; i < colCount; i++) {
-        const filled = cols[i].filter(val => val !== '');
-        if (filled.length > 0 && filled.length < rowLen) {
-          return alert(`⚠️ '${columnNames[i]}' 열에 일부만 입력되어 있습니다. 전체를 입력하거나 모두 비워주세요.`);
-        }
-      }
-
-      // 비어 있지 않은 열만 추출
-      const filteredCols = [];
-      const filteredNames = [];
-      for (let i = 0; i < colCount; i++) {
-        const filled = cols[i].filter(v => v !== '');
-        if (filled.length === rowLen) {
-          filteredCols.push(cols[i]);
-          filteredNames.push(columnNames[i]);
-        }
-      }
-
-      const weeks = [];
-      for (let r = 0; r < rowLen; r++) {
-        const row = filteredCols.map(col => Number(col[r]));
-        weeks.push(row);
-      }
-
-      if (weeks.length < 4) return alert("⚠️ 최소 4주 이상의 완전한 열이 필요합니다.");
-
-      try {
-        const res = await fetch("https://correlation-api.onrender.com/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ weeks }) // ✅ 서버 요구 형식
-        });
-        const result = await res.json();
-        if (result.error) return alert("❌ 분석 오류: " + result.error);
-
-        localStorage.setItem("heatmap", result.heatmap);
-        localStorage.setItem("corr", JSON.stringify(result.corr));
-        window.location.href = "result.html";
-
-      } catch (err) {
-        console.error(err);
-        alert("🚨 서버 오류 또는 네트워크 문제입니다. 잠시 후 다시 시도해주세요.");
-      }
+  // 입력값 수집 (열 기준)
+  for (let r = 0; r < rowCount; r++) {
+    const inputs = tableBody.children[r].querySelectorAll('input');
+    inputs.forEach((input, i) => {
+      cols[i].push(input.value.trim());
     });
+  }
+
+  // 유효성 검사: 열별로 전부 입력되었거나 전부 비어있어야 함
+  for (let i = 0; i < colCount; i++) {
+    const filled = cols[i].filter(val => val !== '');
+    if (filled.length > 0 && filled.length < rowCount) {
+      return alert(`⚠️ '${columnNames[i]}' 열에 일부만 입력되어 있습니다. 전체를 입력하거나 모두 비워주세요.`);
+    }
+  }
+
+  // 열 기준에서 행 기준으로 변환 + 객체화
+  const weeks = [];
+  for (let r = 0; r < rowCount; r++) {
+    const row = {};
+    let hasAny = false;
+    for (let c = 0; c < colCount; c++) {
+      const val = cols[c][r];
+      if (val !== '') {
+        row[columnNames[c]] = Number(val);
+        hasAny = true;
+      }
+    }
+    if (hasAny) weeks.push(row);
+  }
+
+  if (weeks.length < 4) return alert("⚠️ 최소 4주 이상의 유효한 데이터가 필요합니다.");
+
+  try {
+    const res = await fetch("https://correlation-api.onrender.com/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ weeks })
+    });
+    const result = await res.json();
+    if (result.error) return alert("❌ 분석 오류: " + result.error);
+
+    localStorage.setItem("heatmap", result.heatmap);
+    localStorage.setItem("corr", JSON.stringify(result.corr));
+    window.location.href = "result.html";
+
+  } catch (err) {
+    console.error(err);
+    alert("🚨 서버 오류 또는 네트워크 문제입니다. 잠시 후 다시 시도해주세요.");
+  }
+});
+
   </script>
 </body>
 </html>
