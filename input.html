@@ -15,7 +15,6 @@
   </style>
 </head>
 <body class="bg-gray-50 p-6 text-gray-800">
-
   <div class="max-w-7xl mx-auto bg-white p-8 rounded-xl shadow">
     <h1 class="text-2xl font-bold mb-2">📥 주간 마케팅 데이터 입력</h1>
     <p class="text-gray-600 mb-6">최소 4주, 최대 12주까지 데이터를 입력해주세요.</p>
@@ -24,7 +23,7 @@
       <div class="overflow-x-auto">
         <table class="table-auto w-full text-sm border border-gray-300">
           <thead class="bg-gray-100">
-            <tr>
+            <tr id="column-header">
               <th>주차</th>
               <th>결제금액</th>
               <th>환불비율 (%)</th>
@@ -39,94 +38,114 @@
               <th>광고비용</th>
               <th>광고전환수</th>
               <th>광고클릭수</th>
+              <th><button type="button" onclick="addColumn()" class="text-xs text-blue-600">+ 열 추가</button></th>
             </tr>
           </thead>
           <tbody id="tableBody">
-            <!-- 자동 삽입 -->
+            <!-- 행 삽입 -->
           </tbody>
         </table>
       </div>
 
-      <div class="flex justify-between items-center mt-6">
-        <button type="button" onclick="addRow()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-          + 주차 추가
-        </button>
-        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
-          📊 분석 요청하기
-        </button>
+      <div class="flex justify-between items-center mt-6 gap-4 flex-wrap">
+        <div class="flex gap-2">
+          <button type="button" onclick="addRow()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">+ 주차 추가</button>
+          <button type="button" onclick="removeRow()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">- 주차 삭제</button>
+        </div>
+        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">📊 분석 요청하기</button>
       </div>
     </form>
   </div>
 
   <script>
     const tableBody = document.getElementById('tableBody');
+    const columnHeader = document.getElementById('column-header');
     let rowCount = 0;
     const maxRows = 12;
+    const minRows = 5;
+
+    const getColumnNames = () => Array.from(columnHeader.children).slice(1, -1).map(th => th.innerText.trim());
 
     const addRow = () => {
-      if (rowCount >= maxRows) {
-        alert("⚠️ 최대 12주까지만 입력 가능합니다.");
-        return;
-      }
-
+      if (rowCount >= maxRows) return alert("⚠️ 최대 12주까지만 입력 가능합니다.");
       rowCount++;
+      const colNames = getColumnNames();
       const row = document.createElement('tr');
       row.innerHTML = `
         <td class="font-semibold">${rowCount}주차</td>
-        ${Array(13).fill(`<td><input type="number" step="any" required name="week${rowCount}[]"></td>`).join('')}
+        ${colNames.map(name => `<td><input type="number" step="any" name="week${rowCount}[]"></td>`).join('')}
       `;
       tableBody.appendChild(row);
     };
 
-    // 기본 4주차 생성
+    const removeRow = () => {
+      if (rowCount > minRows) {
+        tableBody.removeChild(tableBody.lastChild);
+        rowCount--;
+      } else {
+        alert("⚠️ 최소 5주차는 유지해야 합니다.");
+      }
+    };
+
+    const addColumn = () => {
+      const name = prompt("새 열 제목을 입력해주세요:");
+      if (!name) return;
+      const exists = getColumnNames().includes(name);
+      if (exists) return alert("❌ 중복된 열 제목입니다.");
+
+      const th = document.createElement('th');
+      th.innerHTML = `${name} <button type="button" onclick="removeColumn(this)" class="text-xs text-red-600">❌</button>`;
+      columnHeader.insertBefore(th, columnHeader.lastElementChild);
+
+      for (const row of tableBody.children) {
+        const td = document.createElement('td');
+        td.innerHTML = '<input type="number" step="any">';
+        row.appendChild(td);
+      }
+    };
+
+    const removeColumn = (btn) => {
+      const index = Array.from(columnHeader.children).indexOf(btn.parentElement);
+      if (columnHeader.children.length <= 3) return alert("⚠️ 최소 2개 이상의 열이 필요합니다.");
+      columnHeader.removeChild(btn.parentElement);
+      for (const row of tableBody.children) {
+        row.removeChild(row.children[index]);
+      }
+    };
+
     for (let i = 0; i < 4; i++) addRow();
 
-    // 분석 요청
     document.getElementById('weeklyForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const columnNames = getColumnNames();
+      const rows = [];
+      let valid = true;
 
-      if (rowCount < 4) {
-        alert("⚠️ 최소 4주 이상 데이터를 입력해주세요.");
-        return;
+      for (let i = 0; i < tableBody.children.length; i++) {
+        const inputs = tableBody.children[i].querySelectorAll('input');
+        const values = Array.from(inputs).map(input => input.value.trim());
+        const hasAny = values.some(val => val !== '');
+        const isComplete = values.every(val => val !== '');
+
+        if (hasAny && !isComplete) {
+          alert(`${i + 1}주차: 일부 데이터가 누락되어 있습니다.`);
+          valid = false;
+          break;
+        }
+        if (isComplete) rows.push(values.map(Number));
       }
 
-      const weeks = [];
-
-      for (let i = 1; i <= rowCount; i++) {
-        const inputs = document.getElementsByName(`week${i}[]`);
-        const values = Array.from(inputs).map(input => parseFloat(input.value || 0));
-        weeks.push({
-          결제금액: values[0],
-          환불비율: values[1],
-          방문자수: values[2],
-          전체주문고객수: values[3],
-          기존고객수: values[4],
-          신규고객수: values[5],
-          전체주문건수: values[6],
-          관심고객증감: values[7],
-          알림고객증감: values[8],
-          광고유입자수: values[9],
-          광고비용: values[10],
-          광고전환수: values[11],
-          광고클릭수: values[12]
-        });
-      }
+      if (!valid || rows.length < 4) return alert("⚠️ 최소 4주 이상의 완전한 데이터가 필요합니다.");
 
       try {
         const res = await fetch("https://correlation-api.onrender.com/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ weeks })
+          body: JSON.stringify({ columnNames, rows })
         });
-
         const result = await res.json();
+        if (result.error) return alert("❌ 분석 오류: " + result.error);
 
-        if (result.error) {
-          alert("❌ 분석 오류: " + result.error);
-          return;
-        }
-
-        // 결과 전달
         localStorage.setItem("heatmap", result.heatmap);
         localStorage.setItem("corr", JSON.stringify(result.corr));
         window.location.href = "result.html";
