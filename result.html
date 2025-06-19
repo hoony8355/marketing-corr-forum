@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>상관관계 분석 결과</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="/js/firebase.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 p-6">
 
@@ -18,6 +17,7 @@
     </div>
     <p class="text-gray-600 mb-8">최근 입력한 주간 마케팅 데이터의 변수 간 상관관계를 시각화한 결과입니다.</p>
 
+    <!-- 히트맵 이미지 -->
     <section class="mb-10">
       <h2 class="text-lg font-semibold mb-3">🔍 상관계수 히트맵</h2>
       <div class="border rounded overflow-hidden">
@@ -26,11 +26,13 @@
       </div>
     </section>
 
+    <!-- 상관계수 테이블 -->
     <section class="mb-10 overflow-x-auto">
       <h2 class="text-lg font-semibold mb-3">📊 상관계수 테이블</h2>
       <table id="corrTable" class="table-auto border-collapse w-full text-sm border"></table>
     </section>
 
+    <!-- 버튼 영역 -->
     <div class="flex justify-end gap-3">
       <button onclick="postResult()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
         📤 게시하기
@@ -41,28 +43,33 @@
     </div>
   </div>
 
+  <!-- JS: 히트맵 및 상관계수 테이블 표시 -->
   <script>
-    // 히트맵 로드
     const heatmap = localStorage.getItem("heatmap");
     const heatmapImg = document.getElementById("heatmapImage");
     const heatmapFallback = document.getElementById("heatmapFallback");
+
     if (heatmap) {
       heatmapImg.src = heatmap;
+      console.log("✅ 히트맵 이미지 로딩 성공");
     } else {
       heatmapImg.classList.add("hidden");
       heatmapFallback.classList.remove("hidden");
+      console.warn("⚠️ 히트맵 이미지 없음");
     }
 
-    // 상관계수 테이블
     const corr = JSON.parse(localStorage.getItem("corr") || "{}");
     const keys = Object.keys(corr);
     const table = document.getElementById("corrTable");
 
     if (keys.length === 0) {
       table.innerHTML = "<tr><td class='p-4 text-center text-gray-500'>상관계수 데이터가 없습니다.</td></tr>";
+      console.warn("⚠️ 상관계수 없음");
     } else {
       let header = "<tr><th class='border bg-gray-100 p-2'></th>";
-      keys.forEach(k => header += `<th class='border bg-gray-100 p-2 whitespace-nowrap'>${k}</th>`);
+      keys.forEach(k => {
+        header += `<th class='border bg-gray-100 p-2 whitespace-nowrap'>${k}</th>`;
+      });
       header += "</tr>";
       table.innerHTML += header;
 
@@ -75,37 +82,42 @@
         row += "</tr>";
         table.innerHTML += row;
       });
+      console.log("✅ 상관계수 테이블 렌더링 완료");
     }
   </script>
 
+  <!-- Firestore 게시 기능 -->
   <script type="module">
-    import { db } from '/js/firebase.js';
-    import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+    import { db } from './js/firebase.js';
+    import {
+      collection,
+      addDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
     window.postResult = async function () {
       const corr = localStorage.getItem("corr");
       const heatmap = localStorage.getItem("heatmap");
+
       if (!corr || !heatmap) {
-        alert("상관계수 데이터가 없습니다.");
+        alert("❗ 상관계수 또는 히트맵 데이터가 없습니다.");
         return;
       }
 
       try {
-        const docRef = await addDoc(collection(db, "posts"), {
+        console.log("📤 Firestore로 전송 시도 중...");
+        await addDoc(collection(db, "posts"), {
           corr: JSON.parse(corr),
           heatmap,
-          createdAt: serverTimestamp(),
-          title: prompt("제목을 입력해주세요"),
-          nickname: prompt("작성자 이름을 입력해주세요")
+          createdAt: serverTimestamp()
         });
-        console.log("✅ 게시 성공: ", docRef.id);
-        alert("✅ 게시가 완료되었습니다.");
+        alert("✅ 게시가 완료되었습니다!");
         window.location.href = "index.html";
       } catch (e) {
-        console.error("🔥 게시 중 오류:", e);
-        alert("게시 중 오류가 발생했습니다. 콘솔을 확인해주세요.");
+        console.error("🔥 Firestore 저장 오류:", e);
+        alert("❗ 게시 중 오류가 발생했습니다. 콘솔을 확인해주세요.");
       }
-    }
+    };
   </script>
 </body>
 </html>
