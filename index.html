@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -58,34 +58,41 @@
     const postList = document.getElementById('post-list');
     const loadingMsg = document.getElementById('loading-msg');
 
-    try {
-      const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
+    async function loadPosts() {
+      try {
+        console.log("📡 Firestore에서 게시글 불러오는 중...");
+        const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
 
-      loadingMsg.remove();
+        loadingMsg.remove();
 
-      if (snapshot.empty) {
-        postList.innerHTML = `
-          <p class="col-span-full text-center text-gray-500">아직 등록된 분석이 없습니다. 직접 등록해보세요!</p>
-        `;
-      } else {
-        snapshot.forEach(doc => {
-          const post = doc.data();
-          const div = document.createElement('div');
-          div.className = "bg-white p-5 rounded-xl shadow hover:shadow-lg transition cursor-pointer";
-          div.innerHTML = `
-            <h3 class="text-lg font-bold text-blue-700 mb-1">${post.title}</h3>
-            <p class="text-sm text-gray-500 mb-2">${new Date(post.createdAt.toDate()).toLocaleString()} | 작성자: ${post.nickname}</p>
-            <p class="text-gray-700 text-sm">${post.summary || '상관관계 분석 결과를 확인해보세요.'}</p>
-          `;
-          div.onclick = () => window.location.href = \`post.html?id=${doc.id}\`;
-          postList.appendChild(div);
-        });
+        if (snapshot.empty) {
+          postList.innerHTML = `<p class="col-span-full text-center text-gray-500">아직 등록된 분석이 없습니다. 직접 등록해보세요!</p>`;
+          console.log("ℹ️ 불러온 게시글 없음");
+        } else {
+          snapshot.forEach(doc => {
+            const post = doc.data();
+            const docId = doc.id;
+            console.log("✅ 게시글 로딩:", { id: docId, ...post });
+
+            const div = document.createElement('div');
+            div.className = "bg-white p-5 rounded-xl shadow hover:shadow-lg transition cursor-pointer";
+            div.innerHTML = `
+              <h3 class="text-lg font-bold text-blue-700 mb-1">상관관계 분석 결과</h3>
+              <p class="text-sm text-gray-500 mb-2">${post.createdAt?.toDate ? new Date(post.createdAt.toDate()).toLocaleString() : "날짜 없음"}</p>
+              <p class="text-gray-700 text-sm">상관관계 히트맵과 테이블을 확인해보세요.</p>
+            `;
+            div.onclick = () => window.location.href = \`post.html?id=${docId}\`;
+            postList.appendChild(div);
+          });
+        }
+      } catch (error) {
+        console.error("🔥 게시글 로딩 중 오류:", error);
+        loadingMsg.innerText = "❗ 게시글을 불러오는 데 문제가 발생했습니다.";
       }
-    } catch (error) {
-      console.error("🔥 게시글 로딩 중 오류:", error);
-      loadingMsg.innerText = "오류가 발생했습니다. 새로고침 해주세요.";
     }
+
+    loadPosts();
   </script>
 </body>
 </html>
