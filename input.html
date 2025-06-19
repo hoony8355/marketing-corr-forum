@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>마케팅 데이터 입력</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="js/firebase.js"></script>
   <style>
     input {
       @apply border border-gray-300 rounded px-2 py-1 w-full;
@@ -40,9 +41,7 @@
               <th><button type="button" onclick="addColumn()" class="text-xs text-blue-600">+ 열 추가</button></th>
             </tr>
           </thead>
-          <tbody id="tableBody">
-            <!-- 행 삽입 -->
-          </tbody>
+          <tbody id="tableBody"></tbody>
         </table>
       </div>
 
@@ -56,9 +55,31 @@
     </form>
   </div>
 
-  <script>
+  <!-- 팝업 입력창 -->
+  <div id="metaPopup" class="fixed inset-0 bg-black/30 flex items-center justify-center hidden z-50">
+    <div class="bg-white p-6 rounded-lg w-full max-w-md space-y-4 shadow-xl">
+      <h2 class="text-lg font-bold">📌 분석 정보 입력</h2>
+      <input type="text" id="inputTitle" placeholder="제목" class="w-full border rounded p-2" />
+      <input type="text" id="inputWriter" placeholder="작성자" class="w-full border rounded p-2" />
+      <textarea id="inputSummary" placeholder="요청 요약" rows="3" class="w-full border rounded p-2"></textarea>
+      <div class="flex justify-end gap-2">
+        <button id="cancelMeta" class="px-4 py-2 bg-gray-300 rounded">취소</button>
+        <button id="submitMeta" class="px-4 py-2 bg-blue-600 text-white rounded">제출</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from './js/firebase.js';
+    import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
     const tableBody = document.getElementById('tableBody');
     const columnHeader = document.getElementById('column-header');
+    const popup = document.getElementById('metaPopup');
+    const inputTitle = document.getElementById('inputTitle');
+    const inputWriter = document.getElementById('inputWriter');
+    const inputSummary = document.getElementById('inputSummary');
+
     let rowCount = 0;
     const maxRows = 12;
     const minRows = 5;
@@ -72,7 +93,7 @@
       const row = document.createElement('tr');
       row.innerHTML = `
         <td class="font-semibold">${rowCount}주차</td>
-        ${colNames.map(name => `<td><input type="number" step="any" name="week${rowCount}[]"></td>`).join('')}
+        ${colNames.map(() => `<td><input type="number" step="any"></td>`).join('')}
       `;
       tableBody.appendChild(row);
     };
@@ -136,6 +157,29 @@
 
       if (!valid || rows.length < 4) return alert("⚠️ 최소 4주 이상의 완전한 데이터가 필요합니다.");
 
+      // 팝업 표시
+      popup.classList.remove('hidden');
+    });
+
+    document.getElementById('cancelMeta').onclick = () => {
+      popup.classList.add('hidden');
+    };
+
+    document.getElementById('submitMeta').onclick = async () => {
+      const title = inputTitle.value.trim();
+      const writer = inputWriter.value.trim();
+      const summary = inputSummary.value.trim();
+
+      if (!title || !writer || !summary) {
+        alert("❗모든 항목을 입력해주세요.");
+        return;
+      }
+
+      const columnNames = getColumnNames();
+      const rows = Array.from(tableBody.children).map(tr =>
+        Array.from(tr.querySelectorAll('input')).map(input => Number(input.value))
+      );
+
       try {
         const res = await fetch("https://correlation-api.onrender.com/analyze", {
           method: "POST",
@@ -145,15 +189,21 @@
         const result = await res.json();
         if (result.error) return alert("❌ 분석 오류: " + result.error);
 
-        localStorage.setItem("heatmap", result.heatmap);
-        localStorage.setItem("corr", JSON.stringify(result.corr));
-        window.location.href = "result.html";
+        const docRef = await addDoc(collection(db, "posts"), {
+          title,
+          writer,
+          summary,
+          createdAt: serverTimestamp(),
+          heatmap: result.heatmap,
+          corr: result.corr
+        });
 
+        location.href = `result.html?id=${docRef.id}`;
       } catch (err) {
         console.error(err);
         alert("🚨 서버 오류 또는 네트워크 문제입니다. 잠시 후 다시 시도해주세요.");
       }
-    });
+    };
   </script>
 </body>
 </html>
