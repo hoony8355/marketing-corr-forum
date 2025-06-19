@@ -9,53 +9,67 @@
 </head>
 <body class="bg-gray-50 text-gray-800">
 
-  <header class="bg-white shadow p-4 flex justify-between items-center">
-    <h1 class="text-2xl font-bold">📊 마케팅 상관관계 분석 게시판</h1>
+  <!-- Header -->
+  <header class="bg-white shadow p-4 flex flex-col md:flex-row justify-between items-center gap-3">
+    <h1 class="text-2xl font-bold text-center md:text-left">📊 마케팅 상관관계 분석 게시판</h1>
     <nav class="flex gap-2">
-      <a href="input.html" class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700">+ 직접 입력하기</a>
-      <a href="upload.html" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700">+ CSV 업로드하기</a>
+      <a href="input.html" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">+ 직접 입력하기</a>
+      <a href="upload.html" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">+ CSV 업로드하기</a>
     </nav>
   </header>
 
-  <main class="max-w-6xl mx-auto mt-8 px-4">
-    <section class="mb-6">
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto mt-10 px-4">
+    <section class="mb-8">
       <h2 class="text-xl font-semibold mb-2">📌 최근 등록된 분석</h2>
       <p class="text-gray-600">마케터들이 등록한 데이터 분석 결과를 확인하고, 의견을 나눌 수 있어요.</p>
     </section>
 
-    <div id="post-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div id="post-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <p id="loading-msg" class="text-gray-500 col-span-full">⏳ 게시글 불러오는 중...</p>
     </div>
   </main>
 
+  <!-- Script -->
   <script type="module">
     import { db } from './js/firebase.js';
-    import { collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import {
+      collection,
+      query,
+      orderBy,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
     const postList = document.getElementById('post-list');
     const loadingMsg = document.getElementById('loading-msg');
 
-    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-    const snapshot = await getDocs(q);
+    try {
+      const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
 
-    // 로딩 메시지 제거
-    loadingMsg.remove();
+      loadingMsg.remove();
 
-    snapshot.forEach(doc => {
-      const post = doc.data();
-      const div = document.createElement('div');
-      div.className = "bg-white p-5 rounded-lg shadow hover:shadow-md transition cursor-pointer";
-      div.innerHTML = `
-        <h3 class="text-lg font-bold text-blue-700 mb-1">${post.title}</h3>
-        <p class="text-sm text-gray-500 mb-2">${new Date(post.createdAt.toDate()).toLocaleString()} | 작성자: ${post.nickname}</p>
-        <p class="text-gray-700 text-sm">${post.summary || '상관관계 분석 결과를 확인해보세요.'}</p>
-      `;
-      div.onclick = () => window.location.href = `post.html?id=${doc.id}`;
-      postList.appendChild(div);
-    });
-
-    if (snapshot.empty) {
-      postList.innerHTML = `<p class="text-center text-gray-500 col-span-full">아직 게시글이 없습니다.</p>`;
+      if (snapshot.empty) {
+        postList.innerHTML = `
+          <p class="col-span-full text-center text-gray-500">아직 등록된 분석이 없습니다. 직접 등록해보세요!</p>
+        `;
+      } else {
+        snapshot.forEach(doc => {
+          const post = doc.data();
+          const div = document.createElement('div');
+          div.className = "bg-white p-5 rounded-xl shadow hover:shadow-lg transition cursor-pointer";
+          div.innerHTML = `
+            <h3 class="text-lg font-bold text-blue-700 mb-1">${post.title}</h3>
+            <p class="text-sm text-gray-500 mb-2">${new Date(post.createdAt.toDate()).toLocaleString()} | 작성자: ${post.nickname}</p>
+            <p class="text-gray-700 text-sm">${post.summary || '상관관계 분석 결과를 확인해보세요.'}</p>
+          `;
+          div.onclick = () => window.location.href = `post.html?id=${doc.id}`;
+          postList.appendChild(div);
+        });
+      }
+    } catch (error) {
+      console.error("🔥 게시글 로딩 중 오류:", error);
+      loadingMsg.innerText = "오류가 발생했습니다. 새로고침 해주세요.";
     }
   </script>
 </body>
