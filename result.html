@@ -33,12 +33,10 @@
     </section>
 
     <div class="flex justify-end gap-3">
-      <button onclick="postResult()"
-        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+      <button onclick="postResult()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
         📤 게시하기
       </button>
-      <button onclick="window.location.href='index.html'"
-        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+      <button onclick="window.location.href='index.html'" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
         게시판으로 돌아가기
       </button>
     </div>
@@ -64,7 +62,6 @@
     if (keys.length === 0) {
       table.innerHTML = "<tr><td class='p-4 text-center text-gray-500'>상관계수 데이터가 없습니다.</td></tr>";
     } else {
-      // Header row
       let header = "<tr><th class='border bg-gray-100 p-2'></th>";
       keys.forEach(k => {
         header += `<th class='border bg-gray-100 p-2 whitespace-nowrap'>${k}</th>`;
@@ -72,7 +69,6 @@
       header += "</tr>";
       table.innerHTML += header;
 
-      // Data rows
       keys.forEach(rowKey => {
         let row = `<tr><th class='border bg-gray-100 p-2 whitespace-nowrap'>${rowKey}</th>`;
         keys.forEach(colKey => {
@@ -86,34 +82,59 @@
   </script>
 
   <script type="module">
-    // ✅ Firebase 연동
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
     import { getDatabase, ref, push, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
 
+    // ✅ Firebase 설정
     const firebaseConfig = {
-      databaseURL: "https://mtktrainning-default-rtdb.asia-southeast1.firebasedatabase.app/"
+      apiKey: "AIzaSyD-Di7kE45aWX2g-ttexNdjeHeZOB-iGpc",
+      authDomain: "marketing-corr-forum.firebaseapp.com",
+      projectId: "marketing-corr-forum",
+      storageBucket: "marketing-corr-forum.firebasestorage.app",
+      messagingSenderId: "942778357566",
+      appId: "1:942778357566:web:fb08be875d85a071bf3e6f",
+      measurementId: "G-48ECD55HBN",
+      databaseURL: "https://marketing-corr-forum-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
+
     const app = initializeApp(firebaseConfig);
+    getAnalytics(app);
     const db = getDatabase(app);
 
     // ✅ 게시하기 함수
     window.postResult = async function () {
-      const corr = localStorage.getItem("corr");
-      const heatmap = localStorage.getItem("heatmap");
-      if (!corr || !heatmap) {
-        alert("상관계수 데이터가 없습니다.");
-        return;
+      try {
+        const corr = localStorage.getItem("corr");
+        const heatmap = localStorage.getItem("heatmap");
+
+        if (!corr || !heatmap) {
+          alert("상관계수 데이터가 없습니다.");
+          return;
+        }
+
+        const nickname = prompt("작성자 이름 또는 닉네임을 입력해주세요:", "익명");
+        if (!nickname) {
+          alert("작성자 이름이 필요합니다.");
+          return;
+        }
+
+        const postRef = push(ref(db, "posts"));
+        await set(postRef, {
+          corr: JSON.parse(corr),
+          heatmap: heatmap,
+          nickname: nickname,
+          createdAt: serverTimestamp()
+        });
+
+        console.log("✅ 게시 성공:", postRef);
+        alert("게시가 완료되었습니다.");
+        window.location.href = "index.html";
+
+      } catch (error) {
+        console.error("🔥 게시 중 오류 발생:", error);
+        alert("오류가 발생했습니다. 콘솔을 확인해주세요.");
       }
-
-      const postRef = push(ref(db, "posts"));
-      await set(postRef, {
-        corr: JSON.parse(corr),
-        heatmap: heatmap,
-        createdAt: serverTimestamp()
-      });
-
-      alert("✅ 게시가 완료되었습니다.");
-      window.location.href = "index.html";
     }
   </script>
 </body>
