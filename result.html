@@ -32,7 +32,11 @@
       </table>
     </section>
 
-    <div class="flex justify-end">
+    <div class="flex justify-end gap-3">
+      <button onclick="postResult()"
+        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+        📤 게시하기
+      </button>
       <button onclick="window.location.href='index.html'"
         class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
         게시판으로 돌아가기
@@ -78,6 +82,38 @@
         row += "</tr>";
         table.innerHTML += row;
       });
+    }
+  </script>
+
+  <script type="module">
+    // ✅ Firebase 연동
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getDatabase, ref, push, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    const firebaseConfig = {
+      databaseURL: "https://mtktrainning-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // ✅ 게시하기 함수
+    window.postResult = async function () {
+      const corr = localStorage.getItem("corr");
+      const heatmap = localStorage.getItem("heatmap");
+      if (!corr || !heatmap) {
+        alert("상관계수 데이터가 없습니다.");
+        return;
+      }
+
+      const postRef = push(ref(db, "posts"));
+      await set(postRef, {
+        corr: JSON.parse(corr),
+        heatmap: heatmap,
+        createdAt: serverTimestamp()
+      });
+
+      alert("✅ 게시가 완료되었습니다.");
+      window.location.href = "index.html";
     }
   </script>
 </body>
