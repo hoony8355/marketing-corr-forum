@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>마케팅 분석 토론 게시판</title>
+  <title>마케팅 상관관계 분석 게시판</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module" src="js/firebase.js"></script>
 </head>
@@ -11,16 +11,20 @@
 
   <header class="bg-white shadow p-4 flex justify-between items-center">
     <h1 class="text-2xl font-bold">📊 마케팅 상관관계 분석 게시판</h1>
-    <a href="upload.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-      + CSV 업로드하기
-    </a>
+    <nav class="flex gap-2">
+      <a href="input.html" class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700">+ 직접 입력하기</a>
+      <a href="upload.html" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700">+ CSV 업로드하기</a>
+    </nav>
   </header>
 
-  <main class="max-w-4xl mx-auto mt-6 px-4">
-    <p class="mb-4 text-gray-600">누구나 마케팅 데이터를 업로드하고, 자동 분석 결과를 공유하고 토론할 수 있어요.</p>
+  <main class="max-w-6xl mx-auto mt-8 px-4">
+    <section class="mb-6">
+      <h2 class="text-xl font-semibold mb-2">📌 최근 등록된 분석</h2>
+      <p class="text-gray-600">마케터들이 등록한 데이터 분석 결과를 확인하고, 의견을 나눌 수 있어요.</p>
+    </section>
 
-    <div id="post-list" class="space-y-4">
-      <!-- 게시글 목록이 여기에 표시됩니다 -->
+    <div id="post-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <p id="loading-msg" class="text-gray-500 col-span-full">⏳ 게시글 불러오는 중...</p>
     </div>
   </main>
 
@@ -29,21 +33,30 @@
     import { collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const postList = document.getElementById('post-list');
+    const loadingMsg = document.getElementById('loading-msg');
+
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
     const snapshot = await getDocs(q);
+
+    // 로딩 메시지 제거
+    loadingMsg.remove();
 
     snapshot.forEach(doc => {
       const post = doc.data();
       const div = document.createElement('div');
-      div.className = "bg-white p-4 rounded shadow hover:shadow-md cursor-pointer";
+      div.className = "bg-white p-5 rounded-lg shadow hover:shadow-md transition cursor-pointer";
       div.innerHTML = `
-        <h2 class="text-lg font-semibold">${post.title}</h2>
-        <p class="text-sm text-gray-500">${new Date(post.createdAt.toDate()).toLocaleString()} | 작성자: ${post.nickname}</p>
-        <p class="mt-2 text-gray-700 line-clamp-2">${post.summary || '상관관계 분석 결과를 확인해보세요.'}</p>
+        <h3 class="text-lg font-bold text-blue-700 mb-1">${post.title}</h3>
+        <p class="text-sm text-gray-500 mb-2">${new Date(post.createdAt.toDate()).toLocaleString()} | 작성자: ${post.nickname}</p>
+        <p class="text-gray-700 text-sm">${post.summary || '상관관계 분석 결과를 확인해보세요.'}</p>
       `;
       div.onclick = () => window.location.href = `post.html?id=${doc.id}`;
       postList.appendChild(div);
     });
+
+    if (snapshot.empty) {
+      postList.innerHTML = `<p class="text-center text-gray-500 col-span-full">아직 게시글이 없습니다.</p>`;
+    }
   </script>
 </body>
 </html>
