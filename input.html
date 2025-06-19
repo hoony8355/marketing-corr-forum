@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>마케팅 데이터 입력</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="js/firebase.js"></script>
   <style>
     input {
       @apply border border-gray-300 rounded px-2 py-1 w-full;
@@ -18,7 +17,7 @@
 <body class="bg-gray-50 p-6 text-gray-800">
   <div class="max-w-7xl mx-auto bg-white p-8 rounded-xl shadow">
     <h1 class="text-2xl font-bold mb-2">📥 주간 마케팅 데이터 입력</h1>
-    <p class="text-gray-600 mb-6">최소 4주, 최대 12주까지 데이터를 입력해주세요.</p>
+    <p class="text-gray-600 mb-6">각 열은 전부 입력되었거나, 모두 비워져야 합니다.</p>
 
     <form id="weeklyForm">
       <div class="overflow-x-auto">
@@ -55,31 +54,9 @@
     </form>
   </div>
 
-  <!-- 팝업 입력창 -->
-  <div id="metaPopup" class="fixed inset-0 bg-black/30 flex items-center justify-center hidden z-50">
-    <div class="bg-white p-6 rounded-lg w-full max-w-md space-y-4 shadow-xl">
-      <h2 class="text-lg font-bold">📌 분석 정보 입력</h2>
-      <input type="text" id="inputTitle" placeholder="제목" class="w-full border rounded p-2" />
-      <input type="text" id="inputWriter" placeholder="작성자" class="w-full border rounded p-2" />
-      <textarea id="inputSummary" placeholder="요청 요약" rows="3" class="w-full border rounded p-2"></textarea>
-      <div class="flex justify-end gap-2">
-        <button id="cancelMeta" class="px-4 py-2 bg-gray-300 rounded">취소</button>
-        <button id="submitMeta" class="px-4 py-2 bg-blue-600 text-white rounded">제출</button>
-      </div>
-    </div>
-  </div>
-
-  <script type="module">
-    import { db } from './js/firebase.js';
-    import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
-
+  <script>
     const tableBody = document.getElementById('tableBody');
     const columnHeader = document.getElementById('column-header');
-    const popup = document.getElementById('metaPopup');
-    const inputTitle = document.getElementById('inputTitle');
-    const inputWriter = document.getElementById('inputWriter');
-    const inputSummary = document.getElementById('inputSummary');
-
     let rowCount = 0;
     const maxRows = 12;
     const minRows = 5;
@@ -138,47 +115,31 @@
     document.getElementById('weeklyForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const columnNames = getColumnNames();
-      const rows = [];
-      let valid = true;
+      const colCount = columnNames.length;
+      const rowCount = tableBody.children.length;
+      const cols = Array.from({ length: colCount }, () => []);
 
-      for (let i = 0; i < tableBody.children.length; i++) {
-        const inputs = tableBody.children[i].querySelectorAll('input');
-        const values = Array.from(inputs).map(input => input.value.trim());
-        const hasAny = values.some(val => val !== '');
-        const isComplete = values.every(val => val !== '');
+      // 입력값 수집 (열 기준)
+      for (let r = 0; r < rowCount; r++) {
+        const inputs = tableBody.children[r].querySelectorAll('input');
+        inputs.forEach((input, i) => {
+          cols[i].push(input.value.trim());
+        });
+      }
 
-        if (hasAny && !isComplete) {
-          alert(`${i + 1}주차: 일부 데이터가 누락되어 있습니다.`);
-          valid = false;
-          break;
+      // 유효성 검사: 열별로 전부 입력되었거나 전부 비어있어야 함
+      for (let i = 0; i < colCount; i++) {
+        const filled = cols[i].filter(val => val !== '');
+        if (filled.length > 0 && filled.length < rowCount) {
+          return alert(`⚠️ '${columnNames[i]}' 열에 일부만 입력되어 있습니다. 전체를 입력하거나 모두 비워주세요.`);
         }
-        if (isComplete) rows.push(values.map(Number));
       }
 
-      if (!valid || rows.length < 4) return alert("⚠️ 최소 4주 이상의 완전한 데이터가 필요합니다.");
-
-      // 팝업 표시
-      popup.classList.remove('hidden');
-    });
-
-    document.getElementById('cancelMeta').onclick = () => {
-      popup.classList.add('hidden');
-    };
-
-    document.getElementById('submitMeta').onclick = async () => {
-      const title = inputTitle.value.trim();
-      const writer = inputWriter.value.trim();
-      const summary = inputSummary.value.trim();
-
-      if (!title || !writer || !summary) {
-        alert("❗모든 항목을 입력해주세요.");
-        return;
+      const rows = [];
+      for (let r = 0; r < rowCount; r++) {
+        const row = cols.map(col => col[r] === '' ? null : Number(col[r]));
+        rows.push(row);
       }
-
-      const columnNames = getColumnNames();
-      const rows = Array.from(tableBody.children).map(tr =>
-        Array.from(tr.querySelectorAll('input')).map(input => Number(input.value))
-      );
 
       try {
         const res = await fetch("https://correlation-api.onrender.com/analyze", {
@@ -189,21 +150,15 @@
         const result = await res.json();
         if (result.error) return alert("❌ 분석 오류: " + result.error);
 
-        const docRef = await addDoc(collection(db, "posts"), {
-          title,
-          writer,
-          summary,
-          createdAt: serverTimestamp(),
-          heatmap: result.heatmap,
-          corr: result.corr
-        });
+        localStorage.setItem("heatmap", result.heatmap);
+        localStorage.setItem("corr", JSON.stringify(result.corr));
+        window.location.href = "result.html";
 
-        location.href = `result.html?id=${docRef.id}`;
       } catch (err) {
         console.error(err);
         alert("🚨 서버 오류 또는 네트워크 문제입니다. 잠시 후 다시 시도해주세요.");
       }
-    };
+    });
   </script>
 </body>
 </html>
