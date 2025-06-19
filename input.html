@@ -54,39 +54,83 @@
   </div>
 
   <script>
-    const tableBody = document.getElementById('tableBody');
-    let rowCount = 0;
-    const maxRows = 12;
+  const tableBody = document.getElementById('tableBody');
+  let rowCount = 0;
+  const maxRows = 12;
 
-    const addRow = () => {
-      if (rowCount >= maxRows) {
-        alert("최대 12주까지만 입력 가능합니다.");
+  const addRow = () => {
+    if (rowCount >= maxRows) {
+      alert("최대 12주까지만 입력 가능합니다.");
+      return;
+    }
+
+    rowCount++;
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>제 ${rowCount}주</td>
+      ${Array(13).fill(`<td><input type="number" step="any" required name="week${rowCount}[]"></td>`).join('')}
+    `;
+    tableBody.appendChild(row);
+  };
+
+  // 기본 4주 자동 생성
+  for (let i = 0; i < 4; i++) addRow();
+
+  // ✅ 분석 요청 로직
+  document.getElementById('weeklyForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (rowCount < 4) {
+      alert("최소 4주 이상 입력해주세요.");
+      return;
+    }
+
+    // 데이터 수집
+    const weeks = [];
+    for (let i = 1; i <= rowCount; i++) {
+      const inputs = document.getElementsByName(`week${i}[]`);
+      const values = Array.from(inputs).map(input => parseFloat(input.value || 0));
+      weeks.push({
+        결제금액: values[0],
+        환불비율: values[1],
+        방문자수: values[2],
+        전체주문고객수: values[3],
+        기존고객수: values[4],
+        신규고객수: values[5],
+        전체주문건수: values[6],
+        관심고객증감: values[7],
+        알림고객증감: values[8],
+        광고유입자수: values[9],
+        광고비용: values[10],
+        광고전환수: values[11],
+        광고클릭수: values[12]
+      });
+    }
+
+    try {
+      const res = await fetch("https://correlation-api.onrender.com/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weeks })
+      });
+
+      const result = await res.json();
+
+      if (result.error) {
+        alert("분석 오류: " + result.error);
         return;
       }
 
-      rowCount++;
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>제 ${rowCount}주</td>
-        ${Array(13).fill(`<td><input type="number" step="any" required name="week${rowCount}[]"></td>`).join('')}
-      `;
-      tableBody.appendChild(row);
-    };
+      // ✅ 로컬스토리지로 데이터 넘기기
+      localStorage.setItem("heatmap", result.heatmap);
+      localStorage.setItem("corr", JSON.stringify(result.corr));
 
-    // 기본 4주 자동 생성
-    for (let i = 0; i < 4; i++) addRow();
-
-    // 제출 시 최소 4주 확인
-    document.getElementById('weeklyForm').addEventListener('submit', e => {
-      e.preventDefault();
-      if (rowCount < 4) {
-        alert("최소 4주 이상 입력해주세요.");
-        return;
-      }
-
-      // 이후 Firebase 또는 API로 데이터 전송
-      alert("입력 완료! 분석 요청 처리 예정입니다.");
-    });
-  </script>
+      // ✅ 결과 페이지로 이동
+      window.location.href = "result.html";
+    } catch (err) {
+      console.error(err);
+      alert("서버 오류 또는 네트워크 문제입니다.");
+    }
+  });
+</script>
 </body>
 </html>
