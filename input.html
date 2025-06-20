@@ -17,15 +17,14 @@
 <body class="bg-gray-50 p-6 text-gray-800">
   <div class="max-w-7xl mx-auto bg-white p-8 rounded-xl shadow">
     <h1 class="text-2xl font-bold mb-2">📥 주간 마케팅 데이터 입력</h1>
-    <p class="text-gray-600 mb-2">- 각 열은 전부 입력되었거나, 모두 비워져야 합니다.</p>
-    <p class="text-gray-600 mb-2">- 직접 입력하거나, 엑셀 데이터를 붙여넣기 해도 됩니다.</p>
-    <p class="text-gray-600 mb-4">- 분석 정확도를 위해 최소 4주 이상의 데이터를 입력해 주세요. 길수록 상관계수가 정밀해집니다.</p>
+    <p class="text-gray-600 mb-1">✔️ 엑셀에서 복사한 데이터도 붙여넣기 가능하며, 직접 한 칸씩 입력해도 무방합니다.</p>
+    <p class="text-gray-600 mb-6">✔️ 각 열은 전부 입력되었거나, 모두 비워져야 하며 4주 이상 데이터가 필요합니다.</p>
 
-    <details class="mb-6">
-      <summary class="text-blue-600 cursor-pointer underline">📌 스마트스토어에서 데이터 확인 방법</summary>
-      <ul class="list-disc pl-6 mt-2 text-sm text-gray-700">
-        <li><strong>결제금액, 환불비율:</strong> 스마트스토어 > 데이터분석 > 판매분석</li>
-        <li><strong>방문자수:</strong> 스마트스토어 > 데이터분석 > 마케팅분석</li>
+    <details class="mb-4">
+      <summary class="cursor-pointer text-blue-600">📌 스마트스토어에서 데이터 찾는 법 보기</summary>
+      <ul class="text-sm list-disc ml-5 mt-2 text-gray-700">
+        <li>결제금액, 환불비율: <b>데이터분석 &gt; 판매분석</b> 메뉴</li>
+        <li>방문자수: <b>데이터분석 &gt; 마케팅분석</b> 메뉴</li>
       </ul>
     </details>
 
@@ -47,18 +46,12 @@
               <th>광고유입자수</th>
               <th>광고비용</th>
               <th>광고전환수</th>
-              <th><button type="button" onclick="addColumn()" class="text-xs text-blue-600">+ 열 추가</button></th>
             </tr>
           </thead>
           <tbody id="tableBody"></tbody>
         </table>
       </div>
-
       <div class="flex justify-between items-center mt-6 gap-4 flex-wrap">
-        <div class="flex gap-2">
-          <button type="button" onclick="addRow()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">+ 주차 추가</button>
-          <button type="button" onclick="removeRow()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">- 주차 삭제</button>
-        </div>
         <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">📊 분석 요청하기</button>
       </div>
     </form>
@@ -68,13 +61,12 @@
     const tableBody = document.getElementById('tableBody');
     const columnHeader = document.getElementById('column-header');
     let rowCount = 0;
-    const maxRows = 12;
     const minRows = 5;
+    const maxRows = 30;
 
-    const getColumnNames = () => Array.from(columnHeader.children).slice(1, -1).map(th => th.innerText.trim());
+    const getColumnNames = () => Array.from(columnHeader.children).slice(1).map(th => th.innerText.trim());
 
     const addRow = () => {
-      if (rowCount >= maxRows) return alert("⚠️ 최대 12주까지만 입력 가능합니다.");
       rowCount++;
       const colNames = getColumnNames();
       const row = document.createElement('tr');
@@ -85,42 +77,36 @@
       tableBody.appendChild(row);
     };
 
-    const removeRow = () => {
-      if (rowCount > minRows) {
-        tableBody.removeChild(tableBody.lastChild);
-        rowCount--;
-      } else {
-        alert("⚠️ 최소 5주차는 유지해야 합니다.");
+    for (let i = 0; i < 5; i++) addRow();
+
+    tableBody.addEventListener('paste', function (e) {
+      const active = document.activeElement;
+      if (!active || active.tagName !== 'INPUT') return;
+
+      const startCell = active.closest('td');
+      const startRow = Array.from(tableBody.children).indexOf(startCell.closest('tr'));
+      const startCol = Array.from(startCell.parentElement.children).indexOf(startCell) - 1;
+
+      e.preventDefault();
+      const pasteData = e.clipboardData.getData('text/plain');
+      const rows = pasteData.trim().split(/\r?\n/).map(row => row.split('\t'));
+
+      if (rows.some(row => row.some(val => isNaN(val.trim()) || val.trim() === ''))) {
+        alert("❌ 숫자만 붙여넣을 수 있습니다. 공백이나 텍스트는 허용되지 않습니다.");
+        return;
       }
-    };
 
-    const addColumn = () => {
-      const name = prompt("새 열 제목을 입력해주세요:");
-      if (!name) return;
-      const exists = getColumnNames().includes(name);
-      if (exists) return alert("❌ 중복된 열 제목입니다.");
+      const neededRows = startRow + rows.length;
+      while (tableBody.children.length < neededRows) addRow();
 
-      const th = document.createElement('th');
-      th.innerHTML = `${name} <button type="button" onclick="removeColumn(this)" class="text-xs text-red-600">❌</button>`;
-      columnHeader.insertBefore(th, columnHeader.lastElementChild);
-
-      for (const row of tableBody.children) {
-        const td = document.createElement('td');
-        td.innerHTML = '<input type="number" step="any">';
-        row.appendChild(td);
-      }
-    };
-
-    const removeColumn = (btn) => {
-      const index = Array.from(columnHeader.children).indexOf(btn.parentElement);
-      if (columnHeader.children.length <= 3) return alert("⚠️ 최소 2개 이상의 열이 필요합니다.");
-      columnHeader.removeChild(btn.parentElement);
-      for (const row of tableBody.children) {
-        row.removeChild(row.children[index]);
-      }
-    };
-
-    for (let i = 0; i < 4; i++) addRow();
+      rows.forEach((rowVals, i) => {
+        const tr = tableBody.children[startRow + i];
+        rowVals.forEach((val, j) => {
+          const td = tr.children[startCol + j + 1];
+          if (td) td.querySelector('input').value = val.trim();
+        });
+      });
+    });
 
     document.getElementById('weeklyForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -139,7 +125,7 @@
       for (let i = 0; i < colCount; i++) {
         const filled = cols[i].filter(val => val !== '');
         if (filled.length > 0 && filled.length < rowCount) {
-          return alert(`⚠️ '${columnNames[i]}' 열에 일부만 입력되어 있습니다. 전체를 입력하거나 모두 비워주세요.`);
+          return alert(`⚠️ '${columnNames[i]}' 열에 일부만 입력되어 있습니다.`);
         }
       }
 
@@ -171,6 +157,7 @@
         localStorage.setItem("heatmap", result.heatmap);
         localStorage.setItem("corr", JSON.stringify(result.corr));
         window.location.href = "result.html";
+
       } catch (err) {
         console.error(err);
         alert("🚨 서버 오류 또는 네트워크 문제입니다. 잠시 후 다시 시도해주세요.");
