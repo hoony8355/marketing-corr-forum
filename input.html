@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>마케팅 데이터 입력</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -17,20 +17,19 @@
 <body class="bg-gray-50 p-6 text-gray-800">
   <div class="max-w-7xl mx-auto bg-white p-8 rounded-xl shadow">
     <h1 class="text-2xl font-bold mb-2">📥 주간 마케팅 데이터 입력</h1>
-    <p class="text-gray-600 mb-4">엑셀에서 복사한 데이터를 아무 셀에나 붙여넣을 수 있습니다. 단, 숫자 외 값이 포함된 경우 입력되지 않습니다. 직접 기입도 가능하며, 각 열은 전부 입력되었거나, 모두 비워져야 합니다.</p>
+    <p class="text-gray-600 mb-2">- 직접 입력 또는 엑셀에서 복사한 셀(숫자 데이터)을 붙여넣을 수 있습니다.</p>
+    <p class="text-gray-600 mb-4">- 각 열은 전부 입력되었거나, 모두 비워져야 합니다. 데이터 기간이 길수록 상관계수 정확도가 높아집니다.</p>
     <details class="mb-6">
-      <summary class="cursor-pointer text-blue-600">📌 스마트스토어 데이터 확인 방법</summary>
-      <div class="mt-2 text-sm text-gray-700">
-        <ul class="list-disc ml-6">
-          <li><b>주별 결제금액, 환불비율</b> → 스마트스토어 메뉴 &gt; 데이터분석 &gt; 판매분석</li>
-          <li><b>방문자수</b> → 스마트스토어 메뉴 &gt; 데이터분석 &gt; 마케팅분석</li>
-        </ul>
-      </div>
+      <summary class="cursor-pointer text-blue-600 underline">📊 스마트스토어에서 데이터 확인 방법</summary>
+      <ul class="text-sm text-gray-700 mt-2 list-disc ml-6">
+        <li>결제금액, 환불비율 → 데이터분석 &gt; 판매분석</li>
+        <li>방문자수 → 데이터분석 &gt; 마케팅분석</li>
+      </ul>
     </details>
 
     <form id="weeklyForm">
       <div class="overflow-x-auto">
-        <table class="table-auto w-full text-sm border border-gray-300">
+        <table class="table-auto w-full text-sm border border-gray-300" id="dataTable">
           <thead class="bg-gray-100">
             <tr id="column-header">
               <th>주차</th>
@@ -66,9 +65,9 @@
   <script>
     const tableBody = document.getElementById('tableBody');
     const columnHeader = document.getElementById('column-header');
-    let rowCount = 0;
     const maxRows = 12;
     const minRows = 5;
+    let rowCount = 0;
 
     const getColumnNames = () => Array.from(columnHeader.children).slice(1, -1).map(th => th.innerText.trim());
 
@@ -96,8 +95,7 @@
     const addColumn = () => {
       const name = prompt("새 열 제목을 입력해주세요:");
       if (!name) return;
-      const exists = getColumnNames().includes(name);
-      if (exists) return alert("❌ 중복된 열 제목입니다.");
+      if (getColumnNames().includes(name)) return alert("❌ 중복된 열 제목입니다.");
 
       const th = document.createElement('th');
       th.innerHTML = `${name} <button type="button" onclick="removeColumn(this)" class="text-xs text-red-600">❌</button>`;
@@ -121,83 +119,22 @@
 
     for (let i = 0; i < 4; i++) addRow();
 
-    document.getElementById('weeklyForm').addEventListener('submit', async (e) => {
+    document.getElementById('dataTable').addEventListener('paste', (e) => {
       e.preventDefault();
-      const columnNames = getColumnNames();
-      const colCount = columnNames.length;
-      const rowCount = tableBody.children.length;
-      const cols = Array.from({ length: colCount }, () => []);
+      const text = e.clipboardData.getData('text');
+      const rows = text.trim().split('\n').map(row => row.split('\t'));
+      const numericOnly = rows.every(row => row.every(cell => /^-?\d+(\.\d+)?$/.test(cell.trim())));
+      if (!numericOnly) return alert("❌ 숫자만 붙여넣을 수 있습니다.");
 
-      for (let r = 0; r < rowCount; r++) {
-        const inputs = tableBody.children[r].querySelectorAll('input');
-        inputs.forEach((input, i) => {
-          cols[i].push(input.value.trim());
+      const requiredRows = rows.length;
+      while (tableBody.children.length < requiredRows) addRow();
+
+      rows.forEach((cells, rIdx) => {
+        const inputs = tableBody.children[rIdx].querySelectorAll('input');
+        cells.forEach((val, cIdx) => {
+          if (inputs[cIdx]) inputs[cIdx].value = val.trim();
         });
-      }
-
-      for (let i = 0; i < colCount; i++) {
-        const filled = cols[i].filter(val => val !== '');
-        if (filled.length > 0 && filled.length < rowCount) {
-          return alert(`⚠️ '${columnNames[i]}' 열에 일부만 입력되어 있습니다. 전체를 입력하거나 모두 비워주세요.`);
-        }
-      }
-
-      const weeks = [];
-      for (let r = 0; r < rowCount; r++) {
-        const row = {};
-        let hasAny = false;
-        for (let c = 0; c < colCount; c++) {
-          const val = cols[c][r];
-          if (val !== '') {
-            row[columnNames[c]] = Number(val);
-            hasAny = true;
-          }
-        }
-        if (hasAny) weeks.push(row);
-      }
-
-      if (weeks.length < 4) return alert("⚠️ 최소 4주 이상의 유효한 데이터가 필요합니다.");
-
-      try {
-        const res = await fetch("https://correlation-api.onrender.com/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ weeks })
-        });
-        const result = await res.json();
-        if (result.error) return alert("❌ 분석 오류: " + result.error);
-
-        localStorage.setItem("heatmap", result.heatmap);
-        localStorage.setItem("corr", JSON.stringify(result.corr));
-        window.location.href = "result.html";
-      } catch (err) {
-        console.error(err);
-        alert("🚨 서버 오류 또는 네트워크 문제입니다. 잠시 후 다시 시도해주세요.");
-      }
-    });
-
-    document.addEventListener('paste', (event) => {
-      const clipboardData = event.clipboardData || window.clipboardData;
-      const pastedData = clipboardData.getData('text');
-      const rows = pastedData.trim().split('\n');
-      const cells = rows.map(r => r.split('\t'));
-      const allNumeric = cells.every(r => r.every(val => val === '' || !isNaN(val)));
-
-      if (!allNumeric) {
-        alert('❌ 숫자가 아닌 값이 포함되어 있습니다. 붙여넣기를 취소합니다.');
-        event.preventDefault();
-        return;
-      }
-
-      const colCount = getColumnNames().length;
-      for (let i = rowCount; i < rowCount + cells.length; i++) addRow();
-
-      for (let r = 0; r < cells.length; r++) {
-        const inputs = tableBody.children[rowCount - cells.length + r].querySelectorAll('input');
-        cells[r].forEach((val, i) => {
-          if (i < inputs.length) inputs[i].value = val;
-        });
-      }
+      });
     });
   </script>
 </body>
