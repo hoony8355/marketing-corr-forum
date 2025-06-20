@@ -132,7 +132,15 @@
     .split(/\r?\n/)
     .map(row => row.split("\t").map(cell => cell.trim()));
 
-  if (rows.some(row => row.some(val => val === "" || isNaN(val)))) {
+  // 쉼표 제거 및 숫자 유효성 검사
+  const isValid = rows.every(row =>
+    row.every(cell => {
+      const cleaned = cell.replaceAll(",", "");
+      return cleaned !== "" && !isNaN(cleaned);
+    })
+  );
+
+  if (!isValid) {
     alert("❌ 숫자 이외의 값이 포함되어 있어 붙여넣을 수 없습니다.");
     e.preventDefault();
     return;
@@ -143,7 +151,7 @@
   const startRow = Array.from(tableBody.children).indexOf(tr);
   const startCol = Array.from(tr.children).indexOf(td) - 1;
 
-  // 필요한 행이 부족하면 추가
+  // 필요한 행 자동 추가
   while (tableBody.children.length < startRow + rows.length) {
     addRow();
   }
@@ -151,15 +159,16 @@
   const maxCols = getColumnNames().length;
 
   rows.forEach((row, i) => {
-    row.forEach((val, j) => {
+    row.forEach((cell, j) => {
       if (startCol + j >= maxCols) return; // 열 초과 방지
       const targetInput = tableBody.children[startRow + i]?.children[startCol + j + 1]?.querySelector("input");
-      if (targetInput) targetInput.value = val;
+      if (targetInput) targetInput.value = cell.replaceAll(",", "");
     });
   });
 
   e.preventDefault();
 });
+
 
 
     // 📤 제출 처리
