@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 p-6">
-
   <div class="max-w-5xl mx-auto bg-white p-6 rounded shadow">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold">📈 상관관계 분석 결과</h1>
@@ -43,49 +42,6 @@
     </div>
   </div>
 
-  <!-- JS: 히트맵 및 상관계수 테이블 표시 -->
-  <script>
-    const heatmap = localStorage.getItem("heatmap");
-    const heatmapImg = document.getElementById("heatmapImage");
-    const heatmapFallback = document.getElementById("heatmapFallback");
-
-    if (heatmap) {
-      heatmapImg.src = heatmap;
-      console.log("✅ 히트맵 이미지 로딩 성공");
-    } else {
-      heatmapImg.classList.add("hidden");
-      heatmapFallback.classList.remove("hidden");
-      console.warn("⚠️ 히트맵 이미지 없음");
-    }
-
-    const corr = JSON.parse(localStorage.getItem("corr") || "{}");
-    const keys = Object.keys(corr);
-    const table = document.getElementById("corrTable");
-
-    if (keys.length === 0) {
-      table.innerHTML = "<tr><td class='p-4 text-center text-gray-500'>상관계수 데이터가 없습니다.</td></tr>";
-      console.warn("⚠️ 상관계수 없음");
-    } else {
-      let header = "<tr><th class='border bg-gray-100 p-2'></th>";
-      keys.forEach(k => {
-        header += `<th class='border bg-gray-100 p-2 whitespace-nowrap'>${k}</th>`;
-      });
-      header += "</tr>";
-      table.innerHTML += header;
-
-      keys.forEach(rowKey => {
-        let row = `<tr><th class='border bg-gray-100 p-2 whitespace-nowrap'>${rowKey}</th>`;
-        keys.forEach(colKey => {
-          const value = corr[rowKey][colKey];
-          row += `<td class='border p-2 text-center'>${value?.toFixed(2) ?? "-"}</td>`;
-        });
-        row += "</tr>";
-        table.innerHTML += row;
-      });
-      console.log("✅ 상관계수 테이블 렌더링 완료");
-    }
-  </script>
-
   <!-- Firestore 게시 기능 -->
   <script type="module">
     import { db } from './js/firebase.js';
@@ -104,9 +60,18 @@
         return;
       }
 
+      // 메타 정보 입력 받기
+      const title = prompt("게시글 제목을 입력해주세요:", "상관관계 분석 결과");
+      if (!title) return alert("❗ 제목은 필수입니다.");
+      const nickname = prompt("작성자 이름 또는 닉네임을 입력해주세요:", "익명");
+      const summary = prompt("한 줄 설명 또는 분석 목적을 입력해주세요:", "마케팅 데이터를 통한 상관관계 분석 결과입니다.");
+
       try {
         console.log("📤 Firestore로 전송 시도 중...");
         await addDoc(collection(db, "posts"), {
+          title,
+          nickname,
+          summary,
           corr: JSON.parse(corr),
           heatmap,
           createdAt: serverTimestamp()
@@ -118,6 +83,45 @@
         alert("❗ 게시 중 오류가 발생했습니다. 콘솔을 확인해주세요.");
       }
     };
+  </script>
+
+  <!-- JS: 히트맵 및 테이블 표시 -->
+  <script>
+    const heatmap = localStorage.getItem("heatmap");
+    const heatmapImg = document.getElementById("heatmapImage");
+    const heatmapFallback = document.getElementById("heatmapFallback");
+
+    if (heatmap) {
+      heatmapImg.src = heatmap;
+    } else {
+      heatmapImg.classList.add("hidden");
+      heatmapFallback.classList.remove("hidden");
+    }
+
+    const corr = JSON.parse(localStorage.getItem("corr") || "{}");
+    const keys = Object.keys(corr);
+    const table = document.getElementById("corrTable");
+
+    if (keys.length === 0) {
+      table.innerHTML = "<tr><td class='p-4 text-center text-gray-500'>상관계수 데이터가 없습니다.</td></tr>";
+    } else {
+      let header = "<tr><th class='border bg-gray-100 p-2'></th>";
+      keys.forEach(k => {
+        header += `<th class='border bg-gray-100 p-2 whitespace-nowrap'>${k}</th>`;
+      });
+      header += "</tr>";
+      table.innerHTML += header;
+
+      keys.forEach(rowKey => {
+        let row = `<tr><th class='border bg-gray-100 p-2 whitespace-nowrap'>${rowKey}</th>`;
+        keys.forEach(colKey => {
+          const value = corr[rowKey][colKey];
+          row += `<td class='border p-2 text-center'>${value?.toFixed(2) ?? "-"}</td>`;
+        });
+        row += "</tr>";
+        table.innerHTML += row;
+      });
+    }
   </script>
 </body>
 </html>
