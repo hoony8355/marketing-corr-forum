@@ -123,34 +123,44 @@
 
     // 📋 붙여넣기 기능
     document.addEventListener("paste", (e) => {
-      const active = document.activeElement;
-      if (!active || active.tagName !== "INPUT") return;
+  const active = document.activeElement;
+  if (!active || active.tagName !== "INPUT") return;
 
-      const pasteData = e.clipboardData.getData("text/plain");
-      const rows = pasteData.trim().split("\n").map(row => row.split("\t"));
+  const pasteData = e.clipboardData.getData("text/plain");
+  const rows = pasteData
+    .trim()
+    .split(/\r?\n/)
+    .map(row => row.split("\t").map(cell => cell.trim()));
 
-      if (rows.some(row => row.some(val => isNaN(val) || val === ""))) {
-        alert("❌ 숫자 이외의 값이 포함되어 있어 붙여넣을 수 없습니다.");
-        e.preventDefault();
-        return;
-      }
+  if (rows.some(row => row.some(val => val === "" || isNaN(val)))) {
+    alert("❌ 숫자 이외의 값이 포함되어 있어 붙여넣을 수 없습니다.");
+    e.preventDefault();
+    return;
+  }
 
-      const td = active.closest("td");
-      const tr = td.closest("tr");
-      const startRow = Array.from(tableBody.children).indexOf(tr);
-      const startCol = Array.from(tr.children).indexOf(td) - 1;
+  const td = active.closest("td");
+  const tr = td.closest("tr");
+  const startRow = Array.from(tableBody.children).indexOf(tr);
+  const startCol = Array.from(tr.children).indexOf(td) - 1;
 
-      while (tableBody.children.length < startRow + rows.length) addRow();
+  // 필요한 행이 부족하면 추가
+  while (tableBody.children.length < startRow + rows.length) {
+    addRow();
+  }
 
-      rows.forEach((row, i) => {
-        row.forEach((val, j) => {
-          const targetInput = tableBody.children[startRow + i]?.children[startCol + j + 1]?.querySelector("input");
-          if (targetInput) targetInput.value = val;
-        });
-      });
+  const maxCols = getColumnNames().length;
 
-      e.preventDefault();
+  rows.forEach((row, i) => {
+    row.forEach((val, j) => {
+      if (startCol + j >= maxCols) return; // 열 초과 방지
+      const targetInput = tableBody.children[startRow + i]?.children[startCol + j + 1]?.querySelector("input");
+      if (targetInput) targetInput.value = val;
     });
+  });
+
+  e.preventDefault();
+});
+
 
     // 📤 제출 처리
     document.getElementById('weeklyForm').addEventListener('submit', async (e) => {
