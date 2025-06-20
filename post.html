@@ -3,9 +3,70 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>분석 상세 보기</title>
+  <title id="pageTitle">분석 상세 보기</title>
+
+  <!-- 기본 SEO -->
+  <meta name="description" content="해당 게시글의 마케팅 상관관계 분석 결과를 확인해보세요." id="metaDesc" />
+  <meta name="keywords" content="마케팅 분석, 상관관계 시각화, 스마트스토어 마케팅, 데이터 기반 마케팅, 스타트업 분석도구" />
+  <meta name="author" content="마케팅 인사이트 게시판" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="" id="ogUrl"/>
+  <meta property="og:title" content="" id="ogTitle"/>
+  <meta property="og:description" content="" id="ogDesc"/>
+  <meta property="og:image" content="" id="ogImage"/>
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="" id="twitterTitle"/>
+  <meta name="twitter:description" content="" id="twitterDesc"/>
+  <meta name="twitter:image" content="" id="twitterImage"/>
+
+  <!-- Canonical -->
+  <link rel="canonical" href="" id="canonical"/>
+
+  <!-- Schema.org JSON-LD -->
+  <script type="application/ld+json" id="schemaJson"></script>
+
+  <!-- ✅ Tailwind CSS + Firebase 포함 -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module" src="js/firebase.js"></script>
+
+  <!-- SEO 동적 설정 스크립트 -->
+  <script>
+    const postId = new URLSearchParams(location.search).get("id");
+    const baseURL = "https://hoony8355.github.io/marketing-corr-forum/post.html?id=" + postId;
+
+    async function setDynamicSEO(title, description, imageUrl) {
+      document.title = title || "분석 상세 보기";
+      document.getElementById("pageTitle").innerText = title;
+      document.getElementById("metaDesc").setAttribute("content", description);
+
+      document.getElementById("ogUrl").setAttribute("content", baseURL);
+      document.getElementById("ogTitle").setAttribute("content", title);
+      document.getElementById("ogDesc").setAttribute("content", description);
+      document.getElementById("ogImage").setAttribute("content", imageUrl);
+
+      document.getElementById("twitterTitle").setAttribute("content", title);
+      document.getElementById("twitterDesc").setAttribute("content", description);
+      document.getElementById("twitterImage").setAttribute("content", imageUrl);
+
+      document.getElementById("canonical").setAttribute("href", baseURL);
+
+      const schema = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": title,
+        "description": description,
+        "url": baseURL,
+        "image": imageUrl,
+        "inLanguage": "ko",
+        "author": { "@type": "Organization", "name": "마케팅 인사이트 게시판" }
+      };
+      document.getElementById("schemaJson").textContent = JSON.stringify(schema);
+    }
+  </script>
 </head>
 <body class="bg-gray-100 text-gray-800">
   <header class="bg-white shadow p-4">
